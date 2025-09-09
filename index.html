@@ -4,8 +4,50 @@
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/vite.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <!-- optional: cegah cache webview -->
+    <meta http-equiv="Cache-Control" content="no-store" />
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <title>Bear App</title>
+
+    <!-- PATCH: auto-kirim X-Init-Data untuk semua fetch ke /api/** -->
+    <script>
+      (function () {
+        function initData(){ try { return (window?.Telegram?.WebApp?.initData) || "" } catch(_) { return "" } }
+        function isApi(u){
+          try{
+            if (typeof u === "string") return u.startsWith("/api/");
+            if (u instanceof URL) return u.pathname.startsWith("/api/");
+            if (typeof Request!=="undefined" && u instanceof Request){
+              const p = new URL(u.url, location.href).pathname; return p.startsWith("/api/");
+            }
+          } catch(_) {}
+          return false;
+        }
+        if (typeof window!=="undefined" && typeof window.fetch==="function"){
+          const orig = window.fetch;
+          window.fetch = function(input, init){
+            try{
+              if (isApi(input)){
+                const h = new Headers((init && init.headers) || undefined);
+                const id = initData();
+                if (id && !h.has("X-Init-Data")) h.set("X-Init-Data", id);
+                if (init && init.body && !h.has("content-type")) h.set("content-type","application/json");
+                if (typeof Request!=="undefined" && input instanceof Request){
+                  const url = input.url;
+                  const ni = { method: input.method, headers: h, body: input.body, mode: input.mode, credentials: input.credentials,
+                    cache: input.cache, redirect: input.redirect, referrer: input.referrer, referrerPolicy: input.referrerPolicy,
+                    integrity: input.integrity, keepalive: input.keepalive, signal: input.signal };
+                  return orig(url, ni);
+                }
+                return orig(input, Object.assign({}, init||{}, { headers: h }));
+              }
+            } catch(_) {}
+            return orig(input, init);
+          };
+        }
+      })();
+    </script>
+    <!-- END PATCH -->
   </head>
   <body>
     <div id="root"></div>
