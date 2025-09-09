@@ -35,7 +35,7 @@ class ErrorBoundary extends React.Component {
           padding: '20px'
         }}>
           <div>
-            <h1 style={{ fontSize: '2rem', marginBottom: '1rem' }}>Ad2Earn</h1>
+            <h1 style={{ fontSize: '2rem', marginBottom: '1rem' }}>Bear App</h1>
             <p>Something went wrong. Please refresh the page.</p>
           </div>
         </div>
