@@ -29,8 +29,19 @@ function verifyInitData(init, botToken) {
 }
 
 function requireUser(req) {
+  // 1) normal (dari Telegram)
   const init = getInitData(req);
   const botToken = process.env.BOT_TOKEN;
+
+  // 2) DEV OVERRIDE via query (untuk tes di Chrome)
+  const q = req.query || {};
+  const isDev = q.dev === "1";
+  const dbgToken = process.env.DEBUG_TOKEN;
+
+  if (isDev && dbgToken && q.token === dbgToken && q.tg_id) {
+    return { user: { id: String(q.tg_id), username: q.username || null }, dev: true };
+  }
+
   if (!init || !botToken) return { error: { status: 401, body: { error: "missing_init_or_bot" } } };
   const u = verifyInitData(init, botToken);
   if (!u) return { error: { status: 401, body: { error: "bad_init" } } };
