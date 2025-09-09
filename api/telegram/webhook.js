@@ -1,5 +1,5 @@
 // api/telegram/webhook.js
-const WEBAPP_URL = process.env.WEBAPP_URL || "https://<DOMAIN-KAMU>.vercel.app";
+const WEBAPP_URL = process.env.WEBAPP_URL || "https://bear-app-lyart.vercel.app";
 
 async function sendMessage(token, chatId, payload) {
   // Node 18+ sudah punya fetch
