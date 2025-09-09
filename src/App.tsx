@@ -26,7 +26,7 @@ const App = () => {
       id: '1',
       type: 'telegram' as const,
       title: '🚀 Join Bear App Channel',
-      description: 'Join our main Ad2earn channel for updates and announcements',
+      description: 'Join our main Bear App channel for updates and announcements',
       reward: '0.01',
       channel_url: 'https://t.me/bearappxyz',
       channel_name: '@bearappxyz',
@@ -46,7 +46,7 @@ const App = () => {
       id: '3',
       type: 'telegram' as const,
       title: '📢 Join News Bear App', 
-      description: 'Stay updated with Ad2earn latest news and features',
+      description: 'Stay updated with Bear App latest news and features',
       reward: '0.01',
       channel_url: 'https://t.me/bearappnews',
       channel_name: '@bearappnews',
@@ -495,24 +495,24 @@ const App = () => {
 
   // Referrals Page
   const ReferralsPage = () => {
-    const botUsername = 'ad2earn_bot'; // Your actual bot username
+    const botUsername = 'bearapp_bot'; // Your actual bot username
     const referralLink = `https://t.me/${botUsername}?start=ref_${user?.id || '12345'}`;
-    const currentProjectUrl = 'https://ad2earn-full-stack-a-v87o.bolt.host';
+    const currentProjectUrl = 'https://bear-app-lyart.vercel.app';
     
     const shareReferralLink = async () => {
       telegramWebApp.hapticFeedback('medium');
       
-      const shareText = `🚀 Join Ad2Earn and start earning money by watching ads!\n\n💰 Earn up to $0.50 per day\n👥 Get 20% commission from referrals\n\nJoin now: ${referralLink}&startapp=${encodeURIComponent(currentProjectUrl)}`;
+      const shareText = `🚀 Join Bear App and start earning money by watching ads!\n\n💰 Earn up to $0.50 per day\n👥 Get 20% commission from referrals\n\nJoin now: ${referralLink}&startapp=${encodeURIComponent(currentProjectUrl)}`;
       
       if (telegramWebApp.isInTelegram()) {
         // Use Telegram's native sharing
-        telegramWebApp.openTelegramLink(`https://t.me/share/url?url=${encodeURIComponent(referralLink + '&startapp=' + encodeURIComponent(currentProjectUrl))}&text=${encodeURIComponent('🚀 Join Ad2Earn and start earning money by watching ads!\n\n💰 Earn up to $0.50 per day\n👥 Get 20% commission from referrals')}`);
+        telegramWebApp.openTelegramLink(`https://t.me/share/url?url=${encodeURIComponent(referralLink + '&startapp=' + encodeURIComponent(currentProjectUrl))}&text=${encodeURIComponent('🚀 Join Bear App and start earning money by watching ads!\n\n💰 Earn up to $0.50 per day\n👥 Get 20% commission from referrals')}`);
       } else {
         // Fallback for web
         if (navigator.share) {
           try {
             await navigator.share({
-              title: 'Join Ad2Earn!',
+              title: 'Join Bear App!',
               text: shareText,
               url: referralLink,
             });
@@ -591,7 +591,7 @@ const App = () => {
               <div className="space-y-2 text-center text-sm text-white/80">
                 <p>1. Share your referral link</p>
                 <p>2. Friends join and earn money</p>
-                <p>3. You get 20% commission forever!</p>
+                <p>3. You get 10% commission forever!</p>
               </div>
             </div>
           </motion.div>
