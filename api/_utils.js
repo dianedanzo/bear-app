@@ -1,41 +1,79 @@
-// api/telegram/webhook.js
-const fetch = global.fetch; // Vercel sudah ada
-const BOT_TOKEN = process.env.BOT_TOKEN;
-const WEBAPP_URL = process.env.WEBAPP_URL || "https://bear-app-lyart.vercel.app";
+// api/_utils.js  (CommonJS)
 
-async function sendMessage(chatId, text, extra) {
-  const url = `https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`;
-  const body = { chat_id: chatId, text, ...extra };
-  await fetch(url, {
-    method: "POST",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify(body),
-  });
+const crypto = require("crypto");
+const { createClient } = require("@supabase/supabase-js");
+
+// ---- Supabase client (service role) ----
+function makeSupabase() {
+  const url = process.env.SUPABASE_URL;
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!url || !key) throw new Error("SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY missing");
+  return createClient(url, key, { auth: { persistSession: false } });
 }
 
-module.exports = async (req, res) => {
-  try {
-    if (req.method !== "POST") return res.status(405).end();
+// ---- Telegram initData verification ----
+// Parse "a=1&b=2" -> { a:"1", b:"2" }
+function parseInitData(raw) {
+  const out = {};
+  (raw || "").split("&").forEach(pair => {
+    const i = pair.indexOf("=");
+    if (i === -1) return;
+    const k = decodeURIComponent(pair.slice(0, i));
+    const v = decodeURIComponent(pair.slice(i + 1));
+    out[k] = v;
+  });
+  return out;
+}
 
-    const update = req.body;
+function verifyTelegramInitData(raw, botToken) {
+  if (!raw || !botToken) return false;
+  const data = parseInitData(raw);
+  if (!data.hash) return false;
 
-    // Handle /start
-    const msg = update.message;
-    if (msg && msg.text && /^\/start/i.test(msg.text)) {
-      await sendMessage(msg.chat.id, "👋 Selamat datang! Buka Mini App di bawah ini:", {
-        reply_markup: {
-          inline_keyboard: [
-            [{ text: "🚀 Open App", web_app: { url: WEBAPP_URL } }],
-          ],
-        },
-      });
-    }
+  const checkString = Object.keys(data)
+    .filter(k => k !== "hash")
+    .sort()
+    .map(k => `${k}=${data[k]}`)
+    .join("\n");
 
-    // (Optional) handle button callbacks dsb di sini…
+  const secretKey = crypto.createHmac("sha256", "WebAppData").update(botToken).digest();
+  const hex = crypto.createHmac("sha256", secretKey).update(checkString).digest("hex");
+  return hex === data.hash;
+}
 
-    return res.status(200).json({ ok: true });
-  } catch (e) {
-    console.error(e);
-    return res.status(200).json({ ok: true }); // Telegram butuh 200 cepat
+function userFromInitData(raw) {
+  const data = parseInitData(raw);
+  // user field is JSON: {"id":12345,"username":"foo",...}
+  let user = {};
+  try { user = JSON.parse(data.user || "{}"); } catch {}
+  return {
+    id: String(user.id || ""),
+    username: user.username || ""
+  };
+}
+
+// ---- Auth wrapper used by all API routes ----
+function requireAuth(req) {
+  // Dev bypass (ONLY when ALLOW_DEV_INIT=1)
+  if ((process.env.ALLOW_DEV_INIT || "0") === "1" && req.query && req.query.dev === "1") {
+    const id = String(req.query.telegram_id || "");
+    const username = String(req.query.username || "");
+    if (!id) return { error: { status: 400, body: { error: "missing_dev_id" } } };
+    return { user: { id, username } };
   }
-};
+
+  const raw = req.headers["x-init-data"] || req.headers["x-initdata"] || "";
+  const token = process.env.BOT_TOKEN || "";
+  if (!raw) return { error: { status: 401, body: { error: "missing_init_data" } } };
+  if (!token) return { error: { status: 500, body: { error: "bot_token_missing" } } };
+
+  const ok = verifyTelegramInitData(String(raw), token);
+  if (!ok) return { error: { status: 401, body: { error: "invalid_init_data" } } };
+
+  const u = userFromInitData(String(raw));
+  if (!u.id) return { error: { status: 401, body: { error: "invalid_user" } } };
+
+  return { user: u };
+}
+
+module.exports = { makeSupabase, requireAuth };
