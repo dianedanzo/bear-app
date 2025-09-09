@@ -1,42 +1,39 @@
-const { makeSupabase, requireAuth } = require("./_utils");
+const { requireUser } = require("./_auth");
+const { admin } = require("./_supa");
 
 module.exports = async (req, res) => {
-  if (req.method !== "GET") return res.status(405).end();
+  const a = requireUser(req);
+  if (a.error) return res.status(a.error.status).json(a.error.body);
+  const { id: telegram_id, username } = a.user;
 
-  // jangan di-cache
-  res.setHeader("Cache-Control", "no-store");
+  try {
+    const supa = admin();
 
-  const auth = requireAuth(req);
-  if (auth.error) return res.status(auth.error.status).json(auth.error.body);
-  const { id: telegram_id, username } = auth.user;
+    // pastikan user terdaftar
+    await supa.rpc("ensure_public_user", { tg_id: telegram_id, uname: username });
 
-  const supabase = makeSupabase();
+    // ambil balance via RPC (sesuai migration kamu)
+    let balance = 0;
+    const r1 = await supa.rpc("get_balance", { tg_id: telegram_id });
+    if (!r1.error && r1.data != null) balance = Number(r1.data) || 0;
+    else {
+      // fallback kalau RPC gagal: sum ledger
+      const r2 = await supa.from("ledger").select("amount").eq("telegram_id", telegram_id);
+      if (!r2.error && r2.data) balance = r2.data.reduce((s, row) => s + Number(row.amount || 0), 0);
+    }
 
-  // pastikan user ada (noop kalau sudah ada)
-  await supabase.rpc("ensure_public_user", { p_telegram_id: telegram_id, p_username: username }).catch(() => null);
+    const tx = await supa.from("ledger").select("id", { count: "exact", head: true }).eq("telegram_id", telegram_id);
+    const td = await supa.from("user_tasks").select("id", { count: "exact", head: true }).eq("telegram_id", telegram_id);
 
-  // 1) coba via RPC get_balance
-  let balance = 0;
-  const { data: bal } = await supabase.rpc("get_balance", { p_telegram_id: telegram_id });
-  if (Array.isArray(bal) && bal[0] && bal[0].balance != null) {
-    balance = Number(bal[0].balance);
-  } else {
-    // 2) fallback: sum langsung dari ledger (ground truth)
-    const { data: rows } = await supabase.from("ledger").select("amount").eq("telegram_id", telegram_id);
-    if (Array.isArray(rows)) balance = rows.reduce((a, r) => a + Number(r.amount || 0), 0);
+    return res.status(200).json({
+      telegram_id,
+      username,
+      txCount: tx.count || 0,
+      taskDone: td.count || 0,
+      balance: Number(balance.toFixed(2)),
+    });
+  } catch (e) {
+    console.error(e);
+    return res.status(500).json({ error: "profile_failed" });
   }
-
-  // (opsional) hitung total task selesai untuk header/stat
-  const { count: completed } = await supabase
-    .from("ledger")
-    .select("id", { head: true, count: "exact" })
-    .eq("telegram_id", telegram_id)
-    .eq("reason", "task_completed");
-
-  return res.status(200).json({
-    telegram_id,
-    username,
-    balance,
-    tasks_completed: completed ?? 0
-  });
 };
