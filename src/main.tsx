@@ -4,6 +4,7 @@ import { createRoot } from 'react-dom/client';
 import { telegramWebApp } from './lib/telegram';
 import App from './App.tsx';
 import './index.css';
+import "./bootstrap/attachInitHeader.js";
 
 // Error boundary to catch any rendering errors
 class ErrorBoundary extends React.Component {
