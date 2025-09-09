@@ -6,9 +6,6 @@ import { telegramWebApp } from './lib/telegram';
 import { supabase, isSupabaseAvailable } from './lib/supabase';
 import { AdGramService, ADGRAM_CONFIG } from './lib/adgram';
 import { Task, User as UserType } from './types';
-import DebugButton from "./DebugButton";
-// ...
-<DebugButton />
 
 const App = () => {
   const [currentPage, setCurrentPage] = useState('home');
