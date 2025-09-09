@@ -25,31 +25,31 @@ const App = () => {
     {
       id: '1',
       type: 'telegram' as const,
-      title: '🚀 Join Ad2earn Channel',
+      title: '🚀 Join Bear App Channel',
       description: 'Join our main Ad2earn channel for updates and announcements',
       reward: '0.01',
-      channel_url: 'https://t.me/ad2earn1',
-      channel_name: '@ad2earn1',
+      channel_url: 'https://t.me/bearappxyz',
+      channel_name: '@bearappxyz',
       created_at: new Date().toISOString()
     },
     {
       id: '2', 
       type: 'telegram' as const,
-      title: '💬 Join Ad2earn Discussion',
-      description: 'Join our Ad2earn discussion group for community chat',
+      title: '💬 Join Bear App Discussion',
+      description: 'Join our Bear App discussion group for community chat',
       reward: '0.01',
-      channel_url: 'https://t.me/ad2earndiscussion',
-      channel_name: '@ad2earndiscussion',
+      channel_url: 'https://t.me/bearappdiscussion',
+      channel_name: '@bearappdiscussion',
       created_at: new Date().toISOString()
     },
     {
       id: '3',
       type: 'telegram' as const,
-      title: '📢 Join News Ad2earn', 
+      title: '📢 Join News Bear App', 
       description: 'Stay updated with Ad2earn latest news and features',
       reward: '0.01',
-      channel_url: 'https://t.me/ad2earnnews',
-      channel_name: '@ad2earnnews',
+      channel_url: 'https://t.me/bearappnews',
+      channel_name: '@bearappnews',
       created_at: new Date().toISOString()
     }
   ];
