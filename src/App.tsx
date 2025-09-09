@@ -495,41 +495,41 @@ const App = () => {
 
   // --- ganti seluruh fungsi ReferralsPage dengan ini ---
 const ReferralsPage = () => {
-  const botUsername = 'bearapp_bot'; // tetap: username bot kamu
-  const copyCommand = `@${botUsername} startapp ref_${user?.id || '12345'}`;
+  // --- di ReferralsPage() ---
+const botUsername = 'bearapp_bot'; // ganti kalau beda
+const referralLink = `https://t.me/${botUsername}?start=ref_${user?.id || '12345'}`;
 
-  // GANTI fungsi ini saja
 const shareReferralLink = async () => {
   telegramWebApp.hapticFeedback('medium');
 
+  // Teks share (boleh ubah copywriting-nya)
+  const shareText =
+    `🚀 Join Bear App dan mulai earning!\n` +
+    `🔗 Referral saya: ${referralLink}`;
+
+  if (telegramWebApp.isInTelegram()) {
+    // Pakai sheet share Telegram — TANPA startapp param
+    telegramWebApp.openTelegramLink(
+      `https://t.me/share/url?url=${encodeURIComponent(referralLink)}&text=${encodeURIComponent(shareText)}`
+    );
+    return;
+  }
+
+  // Di browser biasa: coba Web Share API, fallback copy
+  if (navigator.share) {
+    try {
+      await navigator.share({ title: 'Join Bear App', text: shareText, url: referralLink });
+      return;
+    } catch {
+      /* lanjut ke fallback copy */
+    }
+  }
+
   try {
-    // kita hanya copy referralLink: https://t.me/<bot>?start=ref_<id>
-    if (navigator?.clipboard?.writeText) {
-      await navigator.clipboard.writeText(referralLink);
-    } else {
-      // fallback lama kalau Clipboard API gak ada
-      const ta = document.createElement('textarea');
-      ta.value = referralLink;
-      document.body.appendChild(ta);
-      ta.select();
-      document.execCommand('copy');
-      document.body.removeChild(ta);
-    }
-
-    // notifikasi sukses (tetap di WebApp)
-    if (telegramWebApp?.showPopup) {
-      telegramWebApp.showPopup({
-        title: 'Copied',
-        message: 'Referral link disalin:\n' + referralLink,
-      });
-    } else {
-      telegramWebApp.showAlert('Referral link disalin: ' + referralLink);
-    }
-
-    telegramWebApp.hapticFeedback('success');
-  } catch (error) {
-    telegramWebApp.hapticFeedback('error');
-    telegramWebApp.showAlert('Gagal menyalin referral link.');
+    await navigator.clipboard.writeText(referralLink);
+    telegramWebApp.showAlert('Referral link copied to clipboard!');
+  } catch {
+    telegramWebApp.showAlert(referralLink); // tampilkan supaya bisa long-press–copy
   }
 };
 
