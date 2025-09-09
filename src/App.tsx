@@ -493,112 +493,117 @@ const App = () => {
     </div>
   );
 
-  // Referrals Page
-  const ReferralsPage = () => {
-    const botUsername = 'bearapp_bot'; // Your actual bot username
-    const referralLink = `https://t.me/${botUsername}?start=ref_${user?.id || '12345'}`;
-    const currentProjectUrl = 'https://bear-app-lyart.vercel.app';
-    
-    const shareReferralLink = async () => {
-      telegramWebApp.hapticFeedback('medium');
-      
-      const shareText = `🚀 Join Bear App and start earning money by watching ads!\n\n💰 Earn up to $0.50 per day\n👥 Get 20% commission from referrals\n\nJoin now: ${referralLink}&startapp=${encodeURIComponent(currentProjectUrl)}`;
-      
-      if (telegramWebApp.isInTelegram()) {
-        // Use Telegram's native sharing
-        telegramWebApp.openTelegramLink(`https://t.me/share/url?url=${encodeURIComponent(referralLink + '&startapp=' + encodeURIComponent(currentProjectUrl))}&text=${encodeURIComponent('🚀 Join Bear App and start earning money by watching ads!\n\n💰 Earn up to $0.50 per day\n👥 Get 20% commission from referrals')}`);
-      } else {
-        // Fallback for web
-        if (navigator.share) {
-          try {
-            await navigator.share({
-              title: 'Join Bear App!',
-              text: shareText,
-              url: referralLink,
-            });
-          } catch (error) {
-            navigator.clipboard.writeText(referralLink);
-            telegramWebApp.showAlert('Referral link copied to clipboard!');
-          }
-        } else {
-          navigator.clipboard.writeText(referralLink);
-          telegramWebApp.showAlert('Referral link copied to clipboard!');
-        }
-      }
-    };
+  // --- ganti seluruh fungsi ReferralsPage dengan ini ---
+const ReferralsPage = () => {
+  const botUsername = 'bearapp_bot'; // tetap: username bot kamu
+  const copyCommand = `@${botUsername} startapp ref_${user?.id || '12345'}`;
 
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-purple-900 via-blue-900 to-indigo-900 p-4 pb-20">
-        <div className="max-w-md mx-auto">
+  const shareReferralLink = async () => {
+    // sekarang fungsinya HANYA menyalin teks command, tanpa URL
+    telegramWebApp.hapticFeedback('medium');
+
+    try {
+      if (navigator?.clipboard?.writeText) {
+        await navigator.clipboard.writeText(copyCommand);
+      } else {
+        // fallback lama kalau clipboard API tidak tersedia
+        const ta = document.createElement('textarea');
+        ta.value = copyCommand;
+        document.body.appendChild(ta);
+        ta.select();
+        document.execCommand('copy');
+        document.body.removeChild(ta);
+      }
+
+      // notifikasi sukses (tetap di dalam mini app)
+      if (telegramWebApp?.showPopup) {
+        telegramWebApp.showPopup({
+          title: 'Copied',
+          message: 'Referral command disalin ke clipboard.',
+        });
+      } else {
+        telegramWebApp.showAlert('Referral command disalin ke clipboard.');
+      }
+      telegramWebApp.hapticFeedback('success');
+    } catch (e) {
+      telegramWebApp.hapticFeedback('error');
+      telegramWebApp.showAlert('Gagal menyalin referral command.');
+    }
+  };
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-purple-900 via-blue-900 to-indigo-900 p-4 pb-20">
+      <div className="max-w-md mx-auto">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="text-center mb-8"
+        >
+          <h1 className="text-3xl font-bold text-white mb-2">
+            👥 Referral Program
+          </h1>
+          <p className="text-lg text-white/70">
+            Earn 10% from friends forever!
+          </p>
+        </motion.div>
+
+        {/* Referral Stats */}
+        <div className="grid grid-cols-2 gap-4 mb-8">
           <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="text-center mb-8"
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="bg-white/10 backdrop-blur-lg rounded-xl p-4 border border-white/20 text-center"
           >
-            <h1 className="text-3xl font-bold text-white mb-2">
-              👥 Referral Program
-            </h1>
-            <p className="text-lg text-white/70">
-              Earn 10% from friends forever!
-            </p>
+            <p className="text-white/70 text-sm">Referrals</p>
+            <p className="text-2xl font-bold text-white">{userStats.referrals}</p>
           </motion.div>
 
-          {/* Referral Stats */}
-          <div className="grid grid-cols-2 gap-4 mb-8">
-            <motion.div
-              initial={{ opacity: 0, scale: 0.9 }}
-              animate={{ opacity: 1, scale: 1 }}
-              className="bg-white/10 backdrop-blur-lg rounded-xl p-4 border border-white/20 text-center"
-            >
-              <p className="text-white/70 text-sm">Referrals</p>
-              <p className="text-2xl font-bold text-white">{userStats.referrals}</p>
-            </motion.div>
-
-            <motion.div
-              initial={{ opacity: 0, scale: 0.9 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ delay: 0.1 }}
-              className="bg-white/10 backdrop-blur-lg rounded-xl p-4 border border-white/20 text-center"
-            >
-              <p className="text-white/70 text-sm">Commission</p>
-              <p className="text-2xl font-bold text-white">10%</p>
-            </motion.div>
-          </div>
-
-          {/* Share Button */}
           <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.2 }}
-            className="bg-white/10 backdrop-blur-lg rounded-xl p-6 border border-white/20 mb-8"
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ delay: 0.1 }}
+            className="bg-white/10 backdrop-blur-lg rounded-xl p-4 border border-white/20 text-center"
           >
-            <h2 className="text-xl font-bold text-white mb-4 text-center">
-              🚀 Invite Friends
-            </h2>
-            
-            <motion.button
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              onClick={shareReferralLink}
-              className="w-full bg-gradient-to-r from-green-600 to-blue-600 text-white font-bold py-4 px-6 rounded-xl shadow-lg flex items-center justify-center space-x-2"
-            >
-              <Share2 size={20} />
-              <span>Share Referral Link</span>
-            </motion.button>
-
-            <div className="mt-4 bg-gradient-to-r from-yellow-500/10 to-orange-500/10 rounded-lg p-4 border border-yellow-500/20">
-              <h3 className="text-yellow-400 font-bold mb-2 text-center">🎉 How It Works</h3>
-              <div className="space-y-2 text-center text-sm text-white/80">
-                <p>1. Share your referral link</p>
-                <p>2. Friends join and earn money</p>
-                <p>3. You get 10% commission forever!</p>
-              </div>
-            </div>
+            <p className="text-white/70 text-sm">Commission</p>
+            <p className="text-2xl font-bold text-white">10%</p>
           </motion.div>
         </div>
+
+        {/* Share Button (tetap sama tampilannya, cuma aksi diganti) */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.2 }}
+          className="bg-white/10 backdrop-blur-lg rounded-xl p-6 border border-white/20 mb-8"
+        >
+          <h2 className="text-xl font-bold text-white mb-4 text-center">
+            🚀 Invite Friends
+          </h2>
+
+          <motion.button
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+            onClick={shareReferralLink}
+            className="w-full bg-gradient-to-r from-green-600 to-blue-600 text-white font-bold py-4 px-6 rounded-xl shadow-lg flex items-center justify-center space-x-2"
+          >
+            <Share2 size={20} />
+            <span>Share Referral Link</span>
+          </motion.button>
+
+          <div className="mt-4 bg-gradient-to-r from-yellow-500/10 to-orange-500/10 rounded-lg p-4 border border-yellow-500/20">
+            <h3 className="text-yellow-400 font-bold mb-2 text-center">🎉 How It Works</h3>
+            <div className="space-y-2 text-center text-sm text-white/80">
+              <p>1. Share your referral link</p>
+              <p>2. Friends join and earn money</p>
+              <p>3. You get 10% commission forever!</p>
+            </div>
+          </div>
+        </motion.div>
       </div>
-    );
-  };
+    </div>
+  );
+};
+// --- akhir pengganti ReferralsPage ---
 
   // Withdraw Page
   const WithdrawPage = () => {
