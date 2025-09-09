@@ -1,7 +1,8 @@
-import { makeSupabase, requireAuth } from "./_utils.js";
+const { makeSupabase, requireAuth } = require("./_utils");
 
-export default async function handler(req, res) {
+module.exports = async (req, res) => {
   if (req.method !== "GET") return res.status(405).end();
+
   const auth = requireAuth(req);
   if (auth.error) return res.status(auth.error.status).json(auth.error.body);
   const { id: telegram_id, username } = auth.user;
@@ -21,6 +22,6 @@ export default async function handler(req, res) {
     telegram_id,
     username,
     balance: (bal && bal[0]?.balance) ?? 0,
-    tasks_completed: completed ?? 0,
+    tasks_completed: completed ?? 0
   });
-}
+};
