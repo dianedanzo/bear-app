@@ -9,6 +9,62 @@
   </head>
   <body>
     <div id="root"></div>
+    <script>
+  (function () {
+    function getInitData() {
+      try {
+        return (window && window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.initData) || "";
+      } catch (e) { return ""; }
+    }
+    function isApiUrl(input) {
+      try {
+        if (typeof input === "string") return input.startsWith("/api/");
+        if (input instanceof URL) return input.pathname.startsWith("/api/");
+        if (typeof Request !== "undefined" && input instanceof Request) {
+          const u = new URL(input.url, location.href);
+          return u.pathname.startsWith("/api/");
+        }
+      } catch (e) {}
+      return false;
+    }
+    if (typeof window !== "undefined" && typeof window.fetch === "function") {
+      const origFetch = window.fetch;
+      window.fetch = function (input, init) {
+        try {
+          if (isApiUrl(input)) {
+            const headers = new Headers((init && init.headers) || undefined);
+            const initData = getInitData();
+            if (initData && !headers.has("X-Init-Data")) headers.set("X-Init-Data", initData);
+            if (init && init.body && !headers.has("content-type")) headers.set("content-type","application/json");
+
+            if (typeof Request !== "undefined" && input instanceof Request) {
+              const url = input.url;
+              const newInit = {
+                method: input.method,
+                headers,
+                body: input.body,
+                mode: input.mode,
+                credentials: input.credentials,
+                cache: input.cache,
+                redirect: input.redirect,
+                referrer: input.referrer,
+                referrerPolicy: input.referrerPolicy,
+                integrity: input.integrity,
+                keepalive: input.keepalive,
+                signal: input.signal,
+              };
+              return origFetch(url, newInit);
+            }
+            const newInit = Object.assign({}, init || {}, { headers });
+            return origFetch(input, newInit);
+          }
+        } catch (e) {}
+        return origFetch(input, init);
+      };
+    }
+  })();
+</script>
+
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
