@@ -1,48 +1,41 @@
-import crypto from "crypto";
-import { createClient } from "@supabase/supabase-js";
+// api/telegram/webhook.js
+const fetch = global.fetch; // Vercel sudah ada
+const BOT_TOKEN = process.env.BOT_TOKEN;
+const WEBAPP_URL = process.env.WEBAPP_URL || "https://bear-app-lyart.vercel.app";
 
-export function makeSupabase() {
-  const { SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY } = process.env;
-  if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
-    throw new Error("Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY");
-  }
-  return createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
-    auth: { persistSession: false, autoRefreshToken: false },
+async function sendMessage(chatId, text, extra) {
+  const url = `https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`;
+  const body = { chat_id: chatId, text, ...extra };
+  await fetch(url, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify(body),
   });
 }
 
-export function verifyTelegramInitData(initData, botToken) {
+module.exports = async (req, res) => {
   try {
-    const p = new URLSearchParams(initData || "");
-    const hash = p.get("hash");
-    if (!hash) return false;
-    p.delete("hash");
-    const dataCheckString = [...p.entries()]
-      .map(([k, v]) => `${k}=${v}`)
-      .sort()
-      .join("\n");
-    const secret = crypto.createHmac("sha256", "WebAppData").update(botToken).digest();
-    const calc = crypto.createHmac("sha256", secret).update(dataCheckString).digest("hex");
-    return crypto.timingSafeEqual(Buffer.from(calc), Buffer.from(hash));
-  } catch {
-    return false;
-  }
-}
+    if (req.method !== "POST") return res.status(405).end();
 
-export function parseUserFromInitData(initData) {
-  const p = new URLSearchParams(initData || "");
-  const s = p.get("user");
-  if (!s) return null;
-  try { return JSON.parse(s); } catch { return null; }
-}
+    const update = req.body;
 
-export function requireAuth(req) {
-  const initData = req.headers["x-init-data"] || req.query.initData || req.body?.initData;
-  const { BOT_TOKEN } = process.env;
-  if (!initData || !BOT_TOKEN || !verifyTelegramInitData(initData, BOT_TOKEN)) {
-    return { error: { status: 401, body: { error: "invalid_init_data" } } };
+    // Handle /start
+    const msg = update.message;
+    if (msg && msg.text && /^\/start/i.test(msg.text)) {
+      await sendMessage(msg.chat.id, "👋 Selamat datang! Buka Mini App di bawah ini:", {
+        reply_markup: {
+          inline_keyboard: [
+            [{ text: "🚀 Open App", web_app: { url: WEBAPP_URL } }],
+          ],
+        },
+      });
+    }
+
+    // (Optional) handle button callbacks dsb di sini…
+
+    return res.status(200).json({ ok: true });
+  } catch (e) {
+    console.error(e);
+    return res.status(200).json({ ok: true }); // Telegram butuh 200 cepat
   }
-  const u = parseUserFromInitData(initData);
-  if (!u?.id) return { error: { status: 401, body: { error: "invalid_user" } } };
-  return { user: { id: String(u.id), username: u.username || u.first_name || "User" } };
-}
+};
