@@ -297,7 +297,21 @@ const App = () => {
             Earn money by watching ads!
           </p>
         </motion.div>
-
+<button
+  style={{ position: 'fixed', right: 12, bottom: 12, zIndex: 9999 }}
+  onClick={async () => {
+    try {
+      const echo = await fetch('/api/debug/echo').then(r => r.json());
+      const who  = await fetch('/api/debug/whoami').then(r => r.json());
+      alert(JSON.stringify({ echo, who }, null, 2));
+    } catch (e) {
+      alert('ERR ' + e);
+    }
+  }}
+>
+  Debug API
+</button>
+        
         {/* Stats Cards */}
         <div className="grid grid-cols-2 gap-4 mb-8">
           <motion.div
