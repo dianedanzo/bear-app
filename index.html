@@ -101,6 +101,82 @@
     } else { addBtn(); }
   })();
 </script>
+    <style>
+  #__dbg_overlay {
+    position: fixed; inset: 10px 10px auto auto; z-index: 2147483647;
+    background: #111; color: #0f0; font: 12px/1.4 monospace; padding: 10px 12px;
+    border: 1px solid #0f0; border-radius: 8px; max-width: 90vw; max-height: 60vh; overflow:auto;
+    box-shadow: 0 6px 24px rgba(0,0,0,.6);
+  }
+  #__dbg_overlay button{ margin-top:8px; padding:6px 10px; border-radius:6px; border:1px solid #0f0; background:#222; color:#0f0; }
+</style>
+
+<script>
+  (function () {
+    // 1) Patch fetch -> auto set X-Init-Data utk /api/**
+    function getInitData(){ try{ return (window?.Telegram?.WebApp?.initData)||"" }catch(e){ return "" } }
+    function isApi(input){
+      try{
+        if (typeof input==="string") return input.startsWith("/api/");
+        if (input instanceof URL) return input.pathname.startsWith("/api/");
+        if (typeof Request!=="undefined" && input instanceof Request){
+          var u=new URL(input.url, location.href); return u.pathname.startsWith("/api/");
+        }
+      }catch(e){} return false;
+    }
+    if (typeof window!=="undefined" && typeof window.fetch==="function"){
+      var _f = window.fetch;
+      window.fetch = function(input, init){
+        try{
+          if (isApi(input)){
+            var h = new Headers((init && init.headers) || undefined);
+            var id = getInitData();
+            if (id && !h.has("X-Init-Data")) h.set("X-Init-Data", id);
+            if (init && init.body && !h.has("content-type")) h.set("content-type","application/json");
+            if (typeof Request!=="undefined" && input instanceof Request){
+              var url=input.url;
+              var ni={ method:input.method, headers:h, body:input.body, mode:input.mode, credentials:input.credentials,
+                cache:input.cache, redirect:input.redirect, referrer:input.referrer, referrerPolicy:input.referrerPolicy,
+                integrity:input.integrity, keepalive:input.keepalive, signal:input.signal };
+              return _f(url, ni);
+            }
+            return _f(input, Object.assign({}, init||{}, { headers:h }));
+          }
+        }catch(e){}
+        return _f(input, init);
+      };
+      window.__fetchPatched = true;
+    }
+
+    // 2) Overlay + auto-test setelah load (2 detik)
+    function showOverlay(text){
+      var el=document.getElementById("__dbg_overlay");
+      if(!el){ el=document.createElement("div"); el.id="__dbg_overlay"; document.body.appendChild(el); }
+      el.innerHTML = "<div><b>DEBUG</b></div><pre>"+text+"</pre><button onclick='this.parentNode.remove()'>Close</button>";
+    }
+    function runDiag(){
+      var info = {
+        hasTelegram: !!window.Telegram,
+        hasWebApp: !!(window.Telegram && window.Telegram.WebApp),
+        initDataLength: ((window.Telegram&&Telegram.WebApp&&Telegram.WebApp.initData)||"").length,
+        fetchPatched: !!window.__fetchPatched
+      };
+      Promise.allSettled([
+        fetch("/api/debug/echo").then(r=>r.json()),
+        fetch("/api/debug/whoami").then(r=>r.json())
+      ]).then(([a,b])=>{
+        var echo = a.status==="fulfilled"?a.value:{error:String(a.reason)};
+        var who  = b.status==="fulfilled"?b.value:{error:String(b.reason)};
+        showOverlay(JSON.stringify({info, echo, who}, null, 2));
+      }).catch(e=>{
+        showOverlay(JSON.stringify({error:String(e), info}, null, 2));
+      });
+    }
+    if (document.readyState==="loading"){
+      document.addEventListener("DOMContentLoaded", ()=>setTimeout(runDiag, 2000));
+    } else { setTimeout(runDiag, 2000); }
+  })();
+</script>
     
     <script type="module" src="/src/main.tsx"></script>
   </body>
