@@ -64,7 +64,44 @@
     }
   })();
 </script>
+<style>
+  #__dbgbtn {
+    position: fixed; right: 12px; bottom: 12px; z-index: 999999;
+    padding: 10px 14px; border-radius: 10px; border: 1px solid #aaa;
+    background: #fff; color: #222; font-weight: 700; font-family: sans-serif;
+    box-shadow: 0 2px 10px rgba(0,0,0,.15); cursor: pointer;
+  }
+</style>
 
+<script>
+  // tombol kecil untuk test API dari dalam Mini App
+  (function(){
+    function addBtn(){
+      if (document.getElementById("__dbgbtn")) return;
+      var b = document.createElement("button");
+      b.id="__dbgbtn"; b.textContent="Debug API";
+      b.onclick = async function(){
+        try{
+          var tg = (window.Telegram && Telegram.WebApp) || {};
+          var info = {
+            hasTelegram: !!window.Telegram,
+            hasWebApp: !!tg,
+            initDataLength: (tg.initData || "").length,
+            initDataPreview: (tg.initData || "").slice(0,60)
+          };
+          var echo = await fetch("/api/debug/echo").then(r=>r.json()).catch(e=>({error:String(e)}));
+          var who  = await fetch("/api/debug/whoami").then(r=>r.json()).catch(e=>({error:String(e)}));
+          alert(JSON.stringify({info, echo, who}, null, 2));
+        }catch(e){ alert("ERR "+e); }
+      };
+      document.body.appendChild(b);
+    }
+    if (document.readyState === "loading") {
+      document.addEventListener("DOMContentLoaded", addBtn);
+    } else { addBtn(); }
+  })();
+</script>
+    
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
