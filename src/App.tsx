@@ -496,40 +496,37 @@ const App = () => {
   // --- ganti seluruh fungsi ReferralsPage dengan ini ---
 const ReferralsPage = () => {
   // --- di ReferralsPage() ---
-const botUsername = 'bearapp_bot'; // ganti kalau beda
+const botUsername = 'bearapp_bot';
 const referralLink = `https://t.me/${botUsername}?start=ref_${user?.id || '12345'}`;
 
 const shareReferralLink = async () => {
   telegramWebApp.hapticFeedback('medium');
 
-  // Teks share (boleh ubah copywriting-nya)
-  const shareText =
-    `🚀 Join Bear App dan mulai earning!\n` +
+  const message =
+    `🚀 Join Bear App dan mulai earning!\n\n` +
     `🔗 Referral saya: ${referralLink}`;
 
   if (telegramWebApp.isInTelegram()) {
-    // Pakai sheet share Telegram — TANPA startapp param
+    // KIRIM HANYA TEKS — TIDAK ADA url=
     telegramWebApp.openTelegramLink(
-      `https://t.me/share/url?url=${encodeURIComponent(referralLink)}&text=${encodeURIComponent(shareText)}`
+      `https://t.me/share/url?text=${encodeURIComponent(message)}`
     );
     return;
   }
 
-  // Di browser biasa: coba Web Share API, fallback copy
+  // Di browser biasa: share API -> fallback copy
   if (navigator.share) {
     try {
-      await navigator.share({ title: 'Join Bear App', text: shareText, url: referralLink });
+      await navigator.share({ text: message });
       return;
-    } catch {
-      /* lanjut ke fallback copy */
-    }
+    } catch { /* fallback ke copy */ }
   }
 
   try {
-    await navigator.clipboard.writeText(referralLink);
-    telegramWebApp.showAlert('Referral link copied to clipboard!');
+    await navigator.clipboard.writeText(message);
+    telegramWebApp.showAlert('Referral text copied!');
   } catch {
-    telegramWebApp.showAlert(referralLink); // tampilkan supaya bisa long-press–copy
+    telegramWebApp.showAlert(message); // tampilkan agar bisa long-press copy
   }
 };
 
