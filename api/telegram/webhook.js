@@ -1,41 +1,56 @@
 // api/telegram/webhook.js
-const fetch = global.fetch; // Vercel sudah ada
-const BOT_TOKEN = process.env.BOT_TOKEN;
-const WEBAPP_URL = process.env.WEBAPP_URL || "https://bear-app-lyart.vercel.app";
+const WEBAPP_URL = process.env.WEBAPP_URL || "https://<DOMAIN-KAMU>.vercel.app";
 
-async function sendMessage(chatId, text, extra) {
-  const url = `https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`;
-  const body = { chat_id: chatId, text, ...extra };
-  await fetch(url, {
+async function sendMessage(token, chatId, payload) {
+  // Node 18+ sudah punya fetch
+  const url = `https://api.telegram.org/bot${token}/sendMessage`;
+  return fetch(url, {
     method: "POST",
     headers: { "content-type": "application/json" },
-    body: JSON.stringify(body),
+    body: JSON.stringify({ chat_id: chatId, ...payload })
   });
 }
 
 module.exports = async (req, res) => {
   try {
-    if (req.method !== "POST") return res.status(405).end();
+    // Balas 200 utk semua method agar Telegram gak retry kalau sekadar ping
+    if (req.method !== "POST") return res.status(200).json({ ok: true });
 
-    const update = req.body;
+    // Pastikan body selalu objek
+    let update = req.body;
+    if (typeof update === "string") {
+      try { update = JSON.parse(update); } catch { update = {}; }
+    }
+    update = update || {};
 
-    // Handle /start
+    const token = process.env.BOT_TOKEN;
+    if (!token) {
+      console.error("BOT_TOKEN missing");
+      return res.status(200).json({ ok: true });
+    }
+
+    // /start handler
     const msg = update.message;
-    if (msg && msg.text && /^\/start/i.test(msg.text)) {
-      await sendMessage(msg.chat.id, "👋 Selamat datang! Buka Mini App di bawah ini:", {
+    const text = msg?.text || "";
+    const chatId = msg?.chat?.id;
+
+    if (chatId && /^\/start/i.test(text)) {
+      await sendMessage(token, chatId, {
+        text: "👋 Selamat datang! Klik tombol di bawah untuk membuka Mini App.",
         reply_markup: {
           inline_keyboard: [
-            [{ text: "🚀 Open App", web_app: { url: WEBAPP_URL } }],
-          ],
-        },
+            [{ text: "🚀 Open App", web_app: { url: WEBAPP_URL } }]
+          ]
+        }
       });
     }
 
-    // (Optional) handle button callbacks dsb di sini…
+    // (opsional) callback_query, dll, di sini…
 
     return res.status(200).json({ ok: true });
   } catch (e) {
-    console.error(e);
-    return res.status(200).json({ ok: true }); // Telegram butuh 200 cepat
+    console.error("Webhook error:", e);
+    // Telegram hanya butuh 200 supaya gak retry terus
+    return res.status(200).json({ ok: true });
   }
 };
