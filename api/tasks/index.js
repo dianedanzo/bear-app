@@ -1,5 +1,5 @@
-// api/tasks.js
-const { makeSupabase, requireAuth } = require("./_utils");
+// api/tasks/index.js  (atau api/tasks.js jika di root /api)
+const { makeSupabase, requireAuth } = require("../_utils"); // <-- kalau file di root: "./_utils"
 
 module.exports = async (req, res) => {
   if (req.method !== "GET") return res.status(405).end();
@@ -10,10 +10,7 @@ module.exports = async (req, res) => {
 
   const supabase = makeSupabase();
 
-  // pastikan user ada (aman, no-op kalau sudah ada)
-  await supabase.rpc("ensure_public_user", { p_telegram_id: telegram_id, p_username: "tg" }).catch(() => null);
-
-  // 1) ambil semua task aktif
+  // 1) semua task aktif
   const { data: tasks, error: tErr } = await supabase
     .from("tasks")
     .select("id, title, type, reward, channel_url, channel_name, active")
@@ -22,30 +19,25 @@ module.exports = async (req, res) => {
 
   if (tErr) return res.status(500).json({ error: tErr.message });
 
-  // 2) coba ambil task yang sudah selesai dari public_user_tasks
-  let doneIds = new Set();
-  const { data: done1, error: dErr1 } = await supabase
-    .from("public_user_tasks")
-    .select("task_id")
-    .eq("telegram_id", telegram_id);
+  // 2) ambil task yang SUDAH diberi reward ke user ini dari ledger
+  //    - ref_id = task.id
+  //    - amount > 0 (reward masuk)
+  //    - telegram_id = user
+  const { data: paid, error: pErr } = await supabase
+    .from("ledger")
+    .select("ref_id")
+    .eq("telegram_id", telegram_id)
+    .not("ref_id", "is", null)
+    .gt("amount", 0);
 
-  if (!dErr1) {
-    doneIds = new Set((done1 || []).map(r => r.task_id));
-  } else {
-    // 3) fallback: ambil dari ledger (reason='task_completed', ref_id=task_id)
-    const { data: done2, error: dErr2 } = await supabase
-      .from("ledger")
-      .select("ref_id, reason")
-      .eq("telegram_id", telegram_id)
-      .eq("reason", "task_completed");
-    if (!dErr2) {
-      doneIds = new Set((done2 || []).map(r => r.ref_id));
-    }
-  }
+  if (pErr) return res.status(500).json({ error: pErr.message });
 
+  const doneSet = new Set((paid || []).map(r => String(r.ref_id)));
+
+  // 3) gabungkan → tandai completed
   const withStatus = (tasks || []).map(t => ({
     ...t,
-    completed: doneIds.has(t.id)
+    completed: doneSet.has(String(t.id))
   }));
 
   return res.status(200).json({ tasks: withStatus });
