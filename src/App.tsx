@@ -498,38 +498,40 @@ const ReferralsPage = () => {
   const botUsername = 'bearapp_bot'; // tetap: username bot kamu
   const copyCommand = `@${botUsername} startapp ref_${user?.id || '12345'}`;
 
-  const shareReferralLink = async () => {
-    // sekarang fungsinya HANYA menyalin teks command, tanpa URL
-    telegramWebApp.hapticFeedback('medium');
+  // GANTI fungsi ini saja
+const shareReferralLink = async () => {
+  telegramWebApp.hapticFeedback('medium');
 
-    try {
-      if (navigator?.clipboard?.writeText) {
-        await navigator.clipboard.writeText(copyCommand);
-      } else {
-        // fallback lama kalau clipboard API tidak tersedia
-        const ta = document.createElement('textarea');
-        ta.value = copyCommand;
-        document.body.appendChild(ta);
-        ta.select();
-        document.execCommand('copy');
-        document.body.removeChild(ta);
-      }
-
-      // notifikasi sukses (tetap di dalam mini app)
-      if (telegramWebApp?.showPopup) {
-        telegramWebApp.showPopup({
-          title: 'Copied',
-          message: 'Referral command disalin ke clipboard.',
-        });
-      } else {
-        telegramWebApp.showAlert('Referral command disalin ke clipboard.');
-      }
-      telegramWebApp.hapticFeedback('success');
-    } catch (e) {
-      telegramWebApp.hapticFeedback('error');
-      telegramWebApp.showAlert('Gagal menyalin referral command.');
+  try {
+    // kita hanya copy referralLink: https://t.me/<bot>?start=ref_<id>
+    if (navigator?.clipboard?.writeText) {
+      await navigator.clipboard.writeText(referralLink);
+    } else {
+      // fallback lama kalau Clipboard API gak ada
+      const ta = document.createElement('textarea');
+      ta.value = referralLink;
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand('copy');
+      document.body.removeChild(ta);
     }
-  };
+
+    // notifikasi sukses (tetap di WebApp)
+    if (telegramWebApp?.showPopup) {
+      telegramWebApp.showPopup({
+        title: 'Copied',
+        message: 'Referral link disalin:\n' + referralLink,
+      });
+    } else {
+      telegramWebApp.showAlert('Referral link disalin: ' + referralLink);
+    }
+
+    telegramWebApp.hapticFeedback('success');
+  } catch (error) {
+    telegramWebApp.hapticFeedback('error');
+    telegramWebApp.showAlert('Gagal menyalin referral link.');
+  }
+};
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-900 via-blue-900 to-indigo-900 p-4 pb-20">
