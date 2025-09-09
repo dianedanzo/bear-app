@@ -10,7 +10,76 @@
   <body>
     <div id="root"></div>
     <script>
+  <meta http-equiv="Cache-Control" content="no-store" />
+<script>
+  // === Patch fetch utk header X-Init-Data utk semua /api/** ===
   (function () {
+    function initData() { try { return (window?.Telegram?.WebApp?.initData) || ""; } catch(_) { return ""; } }
+    function isApi(u){
+      try{
+        if (typeof u === "string") return u.startsWith("/api/");
+        if (u instanceof URL) return u.pathname.startsWith("/api/");
+        if (typeof Request !== "undefined" && u instanceof Request) {
+          const p = new URL(u.url, location.href).pathname;
+          return p.startsWith("/api/");
+        }
+      } catch(_) {}
+      return false;
+    }
+    if (typeof window !== "undefined" && typeof window.fetch === "function") {
+      const orig = window.fetch;
+      window.fetch = function (input, init) {
+        try {
+          if (isApi(input)) {
+            const headers = new Headers((init && init.headers) || undefined);
+            const id = initData();
+            if (id && !headers.has("X-Init-Data")) headers.set("X-Init-Data", id);
+            if (init && init.body && !headers.has("content-type")) headers.set("content-type","application/json");
+            if (typeof Request !== "undefined" && input instanceof Request) {
+              const url = input.url;
+              const ni = { method: input.method, headers, body: input.body, mode: input.mode, credentials: input.credentials,
+                cache: input.cache, redirect: input.redirect, referrer: input.referrer, referrerPolicy: input.referrerPolicy,
+                integrity: input.integrity, keepalive: input.keepalive, signal: input.signal };
+              return orig(url, ni);
+            }
+            return orig(input, Object.assign({}, init || {}, { headers }));
+          }
+        } catch(_) {}
+        return orig(input, init);
+      };
+      window.__fetchPatched = true;
+    }
+  })();
+
+  // === Auto-diagnose: panggil /api/debug/{echo,whoami} lalu tampilkan via Telegram alert ===
+  (function () {
+    async function run() {
+      try {
+        const tg = window?.Telegram?.WebApp;
+        const info = {
+          hasTelegram: !!window?.Telegram,
+          hasWebApp: !!tg,
+          initDataLength: (tg?.initData || "").length,
+          fetchPatched: !!window.__fetchPatched
+        };
+        const echo = await fetch("/api/debug/echo").then(r=>r.json()).catch(e=>({error:String(e)}));
+        const who  = await fetch("/api/debug/whoami").then(r=>r.json()).catch(e=>({error:String(e)}));
+        const msg = JSON.stringify({ info, echo, who }, null, 2).slice(0, 3900);
+        if (tg && tg.showAlert) tg.showAlert(msg); else alert(msg);
+      } catch (e) {
+        if (window?.Telegram?.WebApp?.showAlert) window.Telegram.WebApp.showAlert(String(e));
+        else alert(String(e));
+      }
+    }
+    if (document.readyState === "loading") {
+      document.addEventListener("DOMContentLoaded", () => setTimeout(run, 1500));
+    } else {
+      setTimeout(run, 1500);
+    }
+  })();
+</script>
+    
+      (function () {
     function getInitData() {
       try {
         return (window && window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.initData) || "";
