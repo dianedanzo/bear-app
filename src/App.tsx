@@ -132,7 +132,15 @@ const App = () => {
         setIsLoading(false);
       }
     };
-    
+    // 1) balance dari server
+const bal = await secureGet('/api/balance');
+if (bal?.ok) {
+  setUserStats(prev => ({ ...prev, balance: Number(bal.balance) || 0 }));
+}
+
+// 2) tasks dari server (sudah flag is_completed)
+const tl = await secureGet('/api/tasks/list');
+if (tl?.ok) setTasks(tl.tasks);
     initializeApp();
   }, []);
   
