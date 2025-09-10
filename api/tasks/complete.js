@@ -1,32 +1,28 @@
-const { makeSupabase, requireAuth } = require("../_utils");
+// /api/tasks/complete.js
+import { svc } from '../_supabase.js';
+import { verifyInitData } from '../_telegram.js';
 
-module.exports = async (req, res) => {
-  if (req.method !== "POST") return res.status(405).end();
+export default async function handler(req, res) {
+  try {
+    if (req.method !== 'POST') return res.status(405).end();
 
-  const auth = requireAuth(req);
-  if (auth.error) return res.status(auth.error.status).json(auth.error.body);
-  const { id: telegram_id, username } = auth.user;
+    const initData = req.headers['x-telegram-init-data'];
+    const { telegram_id } = verifyInitData(initData, process.env.BOT_TOKEN);
 
-  const { taskId } = req.body || {};
-  if (!taskId) return res.status(400).json({ error: "missing_taskId" });
+    const { task_id, reward } = req.body || {};
+    if (!task_id || !reward) throw new Error('task_id & reward required');
 
-  const supabase = makeSupabase();
+    const sb = svc();
+    const { data, error } = await sb.rpc('complete_telegram_task', {
+      p_user_id: telegram_id,
+      p_task_id: task_id,
+      p_reward: Number(reward)
+    });
+    if (error) throw error;
 
-  const { data: task, error: taskErr } = await supabase
-    .from("tasks")
-    .select("id,reward,active")
-    .eq("id", taskId)
-    .single();
-  if (taskErr || !task || !task.active) return res.status(400).json({ error: "invalid_task" });
+    res.status(200).json({ ok: true, result: data });
+  } catch (e) {
+    res.status(400).json({ ok: false, error: String(e.message || e) });
+  }
+}
 
-  const { error } = await supabase.rpc("complete_task_with_ledger", {
-    p_telegram_id: telegram_id,
-    p_username: username,
-    p_task_id: task.id,
-    p_reward: task.reward
-  });
-  if (error) return res.status(400).json({ error: error.message });
-
-  const { data: bal } = await supabase.rpc("get_balance", { p_telegram_id: telegram_id });
-  res.status(200).json({ ok: true, balance: (bal && bal[0]?.balance) ?? 0 });
-};
