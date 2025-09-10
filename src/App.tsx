@@ -131,7 +131,6 @@ const App = () => {
       } finally {
         setIsLoading(false);
       }
-    };
     // 1) balance dari server
 const bal = await secureGet('/api/balance');
 if (bal?.ok) {
@@ -145,25 +144,29 @@ if (tl?.ok) setTasks(tl.tasks);
   }, []);
   
   const handleTelegramTaskComplete = async (taskId: string, reward: number) => {
-    try {
-      telegramWebApp.hapticFeedback('success');
-      
-      // Coba simpan ke Supabase dulu
-      try {
-        if (user && isSupabaseAvailable()) {
-          const { error } = await supabase.rpc('complete_telegram_task', {
-            task_id: taskId,
-            user_id: user.id,
-            reward_amount: reward
-          });
-          
-          if (error) {
-            console.error('Supabase error:', error);
-          }
-        }
-      } catch (supabaseError) {
-        console.error('Failed to save to Supabase:', supabaseError);
-      }
+  try {
+    telegramWebApp.hapticFeedback('success');
+
+    const out = await securePost('/api/tasks/complete', {
+      task_id: taskId,
+      reward
+    });
+
+    if (!out?.ok) throw new Error(out?.error || 'Server error');
+
+    // Refresh dari server biar tidak bisa diakalin
+    const [bal, tl] = await Promise.all([
+      secureGet('/api/balance'),
+      secureGet('/api/tasks/list')
+    ]);
+    if (bal?.ok) setUserStats(prev => ({ ...prev, balance: Number(bal.balance) || 0 }));
+    if (tl?.ok) setTasks(tl.tasks);
+
+    telegramWebApp.showAlert(`Task completed! +$${reward.toFixed(2)} earned!`);
+  } catch (e:any) {
+    telegramWebApp.showAlert(e.message || 'Error completing task');
+  }
+};
       
       // Update local stats (selalu berhasil)
       setUserStats(prev => ({
