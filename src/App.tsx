@@ -190,14 +190,16 @@ if (tl?.ok) setTasks(tl.tasks);
   };
   
   const handleAdTaskComplete = async (reward: number, blockId: string) => {
-    try {
-      // Show AdGram ad first
-      const adResult = await adGramService.showAd(blockId);
-      
-      if (!adResult.success) {
-        telegramWebApp.showAlert(`Failed to show ad: ${adResult.error || 'Unknown error'}`);
-        return;
-      }
+  // ... tetap tampilkan iklan via AdGram dulu
+  const out = await securePost('/api/ads/complete', { reward, block_id: blockId });
+  if (!out?.ok) {
+    telegramWebApp.showAlert(out?.error || 'Server error');
+    return;
+  }
+  const bal = await secureGet('/api/balance');
+  if (bal?.ok) setUserStats(prev => ({ ...prev, balance: Number(bal.balance) || 0, adsWatched: prev.adsWatched + 1 }));
+  telegramWebApp.showAlert(`Ad completed! +$${reward.toFixed(2)} earned!`);
+};
       
       telegramWebApp.hapticFeedback('success');
       
