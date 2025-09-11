@@ -1,18 +1,22 @@
-// /api/tasks/list.js
 import { svc } from '../_supabase.js';
-import { verifyInitData } from '../_telegram.js';
+
+function getUser(req){
+  const id = req.headers['x-telegram-id'] || req.query?.tid;
+  const username = req.headers['x-telegram-username'] || 'User';
+  if (!id) throw new Error('unauthorized');
+  return { telegram_id: String(id), username: String(username) };
+}
 
 export default async function handler(req, res) {
   try {
-    const initData = req.headers['x-telegram-init-data'];
-    const { telegram_id } = verifyInitData(initData, process.env.BOT_TOKEN);
-
+    res.setHeader('Cache-Control', 'no-store');
+    const { telegram_id, username } = getUser(req);
     const sb = svc();
-    const { data, error } = await sb.rpc('list_tasks_for_user', { p_user_id: telegram_id });
+    await sb.rpc('ensure_public_user', { p_telegram_id: telegram_id, p_username: username });
+    const { data, error } = await sb.rpc('list_tasks_for_user', { p_telegram_id: telegram_id });
     if (error) throw error;
-
-    res.status(200).json({ ok: true, tasks: data || [] });
+    return res.status(200).json({ ok: true, tasks: data || [] });
   } catch (e) {
-    res.status(400).json({ ok: false, error: String(e.message || e) });
+    return res.status(401).json({ ok: false, error: String(e.message || e) });
   }
 }
